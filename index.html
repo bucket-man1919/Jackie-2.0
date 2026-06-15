@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Snacks">
+<meta name="theme-color" content="#11151a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2311151a'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E%F0%9F%8F%83%3C/text%3E%3C/svg%3E">
+<title>Movement Snacks</title>
+<style>
+  :root{
+    --bg:#11151a; --card:#1b212b; --card2:#232b37; --line:#2c3543;
+    --ink:#e8edf2; --muted:#8a94a0;
+    --green:#46c98b; --blue:#5aa9ff; --amber:#f0a83a; --red:#ef6b6b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    display:flex; flex-direction:column; min-height:100%;
+  }
+  .wrap{max-width:480px; margin:0 auto; width:100%; flex:1; display:flex; flex-direction:column;}
+  header{text-align:center; padding:18px 0 8px;}
+  h1{font-size:20px; margin:0; letter-spacing:.02em;}
+  .tagline{color:var(--muted); font-size:12.5px; margin-top:3px;}
+  .screen{display:none; flex:1; flex-direction:column;}
+  .screen.active{display:flex;}
+  button{font-family:inherit; cursor:pointer; border:none;}
+  .btn{
+    display:block; width:100%; padding:16px; margin:8px 0; border-radius:14px;
+    background:var(--card); color:var(--ink); font-size:16px; font-weight:600;
+    text-align:left; border:1px solid var(--line); transition:transform .05s, background .15s;
+  }
+  .btn:active{transform:scale(.985); background:var(--card2);}
+  .btn .sub{display:block; font-weight:400; font-size:12.5px; color:var(--muted); margin-top:3px;}
+  .btn.primary{background:linear-gradient(135deg,#1f6f4f,#46c98b); border:none; color:#06140d; font-size:18px;}
+  .btn.primary .sub{color:#0a2a1c;}
+  .row{display:flex; gap:10px;}
+  .row .btn{flex:1; text-align:center;}
+  .back{background:none; color:var(--muted); font-size:14px; padding:8px 0; align-self:flex-start;}
+  .listcard .sub{margin-top:2px;}
+  /* stage */
+  #stage{align-items:center; justify-content:flex-start;}
+  .phase{font-size:15px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); height:20px; margin-top:6px;}
+  .ringwrap{position:relative; width:248px; height:248px; margin:8px 0;}
+  svg{transform:rotate(-90deg);}
+  .track{fill:none; stroke:var(--line); stroke-width:14;}
+  .prog{fill:none; stroke:var(--green); stroke-width:14; stroke-linecap:round; transition:stroke .2s;}
+  .bignum{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:74px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .snackname{font-size:21px; font-weight:700; text-align:center; margin-top:4px;}
+  .snackdose{color:var(--muted); font-size:13.5px; text-align:center; margin-top:2px; max-width:340px;}
+  .tally{color:var(--muted); font-size:14px; margin-top:8px; font-variant-numeric:tabular-nums;}
+  .stagebtns{display:flex; gap:10px; width:100%; margin-top:auto; padding-top:14px;}
+  .stagebtns button{flex:1; padding:15px; border-radius:13px; font-size:16px; font-weight:600;}
+  .pause{background:var(--card2); color:var(--ink); border:1px solid var(--line);}
+  .stop{background:#3a2326; color:var(--red); border:1px solid #5a2f33;}
+  /* config steppers */
+  .field{display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--line); border-radius:13px; padding:12px 14px; margin:9px 0;}
+  .field .lab{font-size:15px;}
+  .stepper{display:flex; align-items:center; gap:14px;}
+  .stepper button{width:38px; height:38px; border-radius:10px; background:var(--card2); color:var(--ink); font-size:22px; line-height:1; border:1px solid var(--line);}
+  .stepper .val{min-width:46px; text-align:center; font-size:19px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .hint{color:var(--muted); font-size:12px; text-align:center; margin:10px 4px 0; line-height:1.5;}
+  .done-msg{font-size:24px; font-weight:700; text-align:center; margin-top:30px; color:var(--green);}
+  .info p{color:var(--muted); font-size:13.5px; line-height:1.6;}
+  .info b{color:var(--ink);}
+  .info ol{color:var(--muted); font-size:13.5px; line-height:1.7; padding-left:20px;}
+  footer{color:var(--muted); font-size:10.5px; text-align:center; padding:14px 0 6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🏃 Movement Snacks</h1>
+    <div class="tagline">Tiny doses, all day. Jackie 2.0</div>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" class="screen active">
+    <button class="btn primary" onclick="surprise()">🎲 Surprise me
+      <span class="sub">Random snack, ready to go</span></button>
+    <button class="btn" onclick="show('list')">📋 Pick a snack
+      <span class="sub">Choose from the list</span></button>
+    <button class="btn" onclick="show('config')">⏱️ Interval timer
+      <span class="sub">10s on / 10s off — for the Big 3 &amp; holds</span></button>
+    <button class="btn" onclick="show('info')" style="background:none;border:1px dashed var(--line);color:var(--muted)">📲 Add to Home Screen
+      <span class="sub">How to make this an app icon</span></button>
+    <footer>Not medical advice. Stop if anything hurts.</footer>
+  </section>
+
+  <!-- LIST -->
+  <section id="list" class="screen">
+    <button class="back" onclick="show('home')">‹ Back</button>
+    <div id="listItems"></div>
+  </section>
+
+  <!-- STAGE (player for reps, holds, intervals) -->
+  <section id="stage" class="screen">
+    <div class="phase" id="phaseLabel">Ready</div>
+    <div class="ringwrap">
+      <svg width="248" height="248" viewBox="0 0 248 248">
+        <circle class="track" cx="124" cy="124" r="104"></circle>
+        <circle class="prog" id="ring" cx="124" cy="124" r="104"></circle>
+      </svg>
+      <div class="bignum" id="bigNum">–</div>
+    </div>
+    <div class="snackname" id="snackName"></div>
+    <div class="snackdose" id="snackDose"></div>
+    <div class="tally" id="tally"></div>
+    <div class="stagebtns">
+      <button class="pause" id="pauseBtn" onclick="togglePause()">Pause</button>
+      <button class="stop" onclick="stopStage()">Stop</button>
+    </div>
+  </section>
+
+  <!-- CONFIG (interval) -->
+  <section id="config" class="screen">
+    <button class="back" onclick="show('home')">‹ Back</button>
+    <div class="field"><span class="lab">Work (seconds)</span>
+      <div class="stepper"><button onclick="step('work',-5)">–</button><span class="val" id="workVal">10</span><button onclick="step('work',5)">+</button></div></div>
+    <div class="field"><span class="lab">Rest (seconds)</span>
+      <div class="stepper"><button onclick="step('rest',-5)">–</button><span class="val" id="restVal">10</span><button onclick="step('rest',5)">+</button></div></div>
+    <div class="field"><span class="lab">Rounds</span>
+      <div class="stepper"><button onclick="step('rounds',-1)">–</button><span class="val" id="roundsVal">8</span><button onclick="step('rounds',1)">+</button></div></div>
+    <button class="btn primary" style="text-align:center" onclick="startInterval()">Start</button>
+    <div class="hint">Default 10/10 × 8 ≈ 2.5 min. For the Big 3, treat each “work” as one slow hold and switch exercise/side each round.</div>
+  </section>
+
+  <!-- INFO -->
+  <section id="info" class="screen info">
+    <button class="back" onclick="show('home')">‹ Back</button>
+    <p><b>Make this a home-screen app (iPhone):</b></p>
+    <ol>
+      <li>Open this file in <b>Safari</b> on your iPhone.</li>
+      <li>Tap the <b>Share</b> icon (square with an up-arrow).</li>
+      <li>Choose <b>Add to Home Screen</b>.</li>
+      <li>Tap <b>Add</b>. It now opens full-screen like an app.</li>
+    </ol>
+    <p>To get the file onto your phone: AirDrop it from your Mac, or put it somewhere it opens in Safari. Easiest long-term is to host it free (I can help) so it has a real link.</p>
+    <p style="margin-top:14px"><b>Heads-up on iOS:</b> sound needs you to tap a button first (already handled — just press Start). Buzzing/haptics don’t work in a Safari web app, so it’s beeps + visuals only.</p>
+  </section>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const SNACKS = [
+  {name:"Glute bridge", dose:"15 reps · squeeze at the top", type:"reps", reps:15, up:2, topHold:1, down:2},
+  {name:"Bodyweight squat", dose:"10 reps · sit back, chest tall", type:"reps", reps:10, up:2, topHold:0, down:2},
+  {name:"Standing calf raise", dose:"15 reps · slow, full range", type:"reps", reps:15, up:2, topHold:1, down:2},
+  {name:"Hip hinge", dose:"5 reps · butt back, flat back", type:"reps", reps:5, up:3, topHold:0, down:3},
+  {name:"Cat–cow", dose:"8 slow reps · move the whole spine", type:"reps", reps:8, up:3, topHold:0, down:3},
+  {name:"Hip-flexor stretch", dose:"30s each side · glute on, ribs down", type:"hold", seconds:30, eachSide:true},
+  {name:"Single-leg balance", dose:"30s each side · soft knee", type:"hold", seconds:30, eachSide:true},
+  {name:"Side plank", dose:"20s each side · straight line", type:"hold", seconds:20, eachSide:true},
+  {name:"Bird dog", dose:"8 reps · opposite arm + leg, no wobble", type:"reps", reps:8, up:2, topHold:1, down:2},
+  {name:"Dead bug", dose:"8 reps · low back stays down", type:"reps", reps:8, up:2, topHold:0, down:2},
+  {name:"Curl-up (McGill)", dose:"5 holds · hands under low back", type:"reps", reps:5, up:1, topHold:8, down:1, holdStyle:true}
+];
+
+/* ---------- audio ---------- */
+let actx=null;
+function initAudio(){ try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){} }
+function beep(freq,dur,vol){ if(!actx) return; try{
+  const o=actx.createOscillator(), g=actx.createGain(); o.type='sine'; o.frequency.value=freq;
+  o.connect(g); g.connect(actx.destination); const t=actx.currentTime; g.gain.setValueAtTime(vol||0.18,t);
+  o.start(t); g.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.08)); o.stop(t+(dur||0.08)+0.02);
+}catch(e){} }
+
+/* ---------- nav ---------- */
+function show(id){ stopEngine(); document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+/* ---------- ring ---------- */
+const R=104, CIRC=2*Math.PI*R;
+const ringEl=()=>document.getElementById('ring');
+function initRing(){ const r=ringEl(); r.style.strokeDasharray=CIRC; r.style.strokeDashoffset=CIRC; }
+function setRing(frac,color){ const r=ringEl(); r.style.stroke=color; r.style.strokeDashoffset=CIRC*(1-Math.max(0,Math.min(1,frac))); }
+
+/* ---------- engine ---------- */
+let rafId=null, paused=false, stopped=true;
+function stopEngine(){ stopped=true; paused=false; if(rafId){ cancelAnimationFrame(rafId); rafId=null; } const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pause'; }
+function togglePause(){ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'Resume':'Pause'; }
+function stopStage(){ stopEngine(); show('home'); }
+
+/* run a single phase: animate ring fromFrac->toFrac over durSec, count seconds, beep each second */
+function runPhase(durSec, fromFrac, toFrac, color, label, beepFreq, onDone){
+  let elapsed=0, last=performance.now(), lastSec=-1;
+  document.getElementById('phaseLabel').textContent=label;
+  function frame(now){
+    if(stopped) return;
+    if(!paused) elapsed += now-last;
+    last=now;
+    const t=Math.min(1, elapsed/(durSec*1000));
+    setRing(fromFrac+(toFrac-fromFrac)*t, color);
+    const sec=Math.min(durSec, Math.floor(elapsed/1000)+1);
+    if(sec!==lastSec){ lastSec=sec; document.getElementById('bigNum').textContent=sec; if(beepFreq) beep(beepFreq,0.06); }
+    if(elapsed>=durSec*1000){ onDone(); return; }
+    rafId=requestAnimationFrame(frame);
+  }
+  rafId=requestAnimationFrame(frame);
+}
+
+/* countdown N->0 over durSec, beep last 3 + at end */
+function runCountdown(durSec, color, label, onDone){
+  let elapsed=0, last=performance.now(), lastSec=-1;
+  document.getElementById('phaseLabel').textContent=label;
+  function frame(now){
+    if(stopped) return;
+    if(!paused) elapsed += now-last;
+    last=now;
+    const remMs=Math.max(0, durSec*1000 - elapsed);
+    setRing(remMs/(durSec*1000), color);
+    const sec=Math.ceil(remMs/1000);
+    if(sec!==lastSec){ lastSec=sec; document.getElementById('bigNum').textContent=sec; if(sec<=3 && sec>0) beep(760,0.08); }
+    if(remMs<=0){ onDone(); return; }
+    rafId=requestAnimationFrame(frame);
+  }
+  rafId=requestAnimationFrame(frame);
+}
+
+function setStageInfo(name,dose){ document.getElementById('snackName').textContent=name||''; document.getElementById('snackDose').textContent=dose||''; }
+function setTally(t){ document.getElementById('tally').textContent=t||''; }
+function finish(msg){ stopEngine(); setRing(1,'var(--green)'); document.getElementById('phaseLabel').textContent='Done'; document.getElementById('bigNum').textContent='✓'; setTally(msg||''); beep(880,0.12); setTimeout(()=>beep(1175,0.16),130); }
+
+/* ---------- run a snack ---------- */
+function startSnack(s){
+  initAudio(); show('stage'); stopped=false; paused=false; initRing();
+  setStageInfo(s.name, s.dose); setTally('');
+  document.getElementById('pauseBtn').textContent='Pause';
+  if(s.type==='reps') runReps(s); else runHold(s);
+}
+function runReps(s){
+  let rep=0;
+  function doRep(){
+    if(stopped) return;
+    if(rep>=s.reps){ finish('Done — '+s.reps+(s.holdStyle?' holds':' reps')); return; }
+    rep++; setTally(rep+' / '+s.reps);
+    const upLabel=s.holdStyle?'Lift':'Up';
+    runPhase(s.up||2, 0, 1, 'var(--green)', upLabel, 900, ()=>{
+      const after=()=> runPhase(s.down||2, 1, 0, 'var(--blue)', s.holdStyle?'Lower':'Down', 620, ()=>{ beep(660,0.09); doRep(); });
+      if(s.topHold>0) runPhase(s.topHold, 1, 1, 'var(--amber)', 'Hold', 520, after); else after();
+    });
+  }
+  doRep();
+}
+function runHold(s){
+  const sides = s.eachSide ? ['Left side','Right side'] : [null];
+  let i=0;
+  function next(){
+    if(stopped) return;
+    if(i>=sides.length){ finish('Done'); return; }
+    const label=sides[i]; i++;
+    setTally(s.eachSide ? (i+' / '+sides.length+' sides') : '');
+    runCountdown(s.seconds, 'var(--amber)', label||'Hold', ()=>{
+      beep(660,0.1);
+      if(i<sides.length){ runCountdown(4,'var(--blue)','Switch sides', next); } else next();
+    });
+  }
+  next();
+}
+
+function surprise(){ const s=SNACKS[Math.floor(Math.random()*SNACKS.length)]; startSnack(s); }
+
+/* ---------- list ---------- */
+function buildList(){
+  const c=document.getElementById('listItems'); c.innerHTML='';
+  SNACKS.forEach((s,idx)=>{
+    const b=document.createElement('button'); b.className='btn listcard';
+    b.innerHTML='<span>'+s.name+'</span><span class="sub">'+s.dose+'</span>';
+    b.onclick=()=>startSnack(SNACKS[idx]); c.appendChild(b);
+  });
+}
+
+/* ---------- interval timer ---------- */
+const cfg={work:10, rest:10, rounds:8};
+function step(k,d){ cfg[k]=Math.max(k==='rounds'?1:5, cfg[k]+d); document.getElementById(k+'Val').textContent=cfg[k]; }
+function startInterval(){
+  initAudio(); show('stage'); stopped=false; paused=false; initRing();
+  setStageInfo('Interval timer', cfg.work+'s on · '+cfg.rest+'s off');
+  document.getElementById('pauseBtn').textContent='Pause';
+  let round=0;
+  function work(){
+    if(stopped) return;
+    round++; if(round>cfg.rounds){ finish('Done — '+cfg.rounds+' rounds'); return; }
+    setTally('Round '+round+' / '+cfg.rounds); beep(440,0.16);
+    runCountdown(cfg.work, 'var(--green)', 'Work', ()=>{
+      if(round>=cfg.rounds){ finish('Done — '+cfg.rounds+' rounds'); return; }
+      beep(330,0.16);
+      runCountdown(cfg.rest, 'var(--amber)', 'Rest', work);
+    });
+  }
+  work();
+}
+
+/* ---------- init ---------- */
+buildList(); initRing();
+document.body.addEventListener('click', initAudio, {once:true});
+</script>
+</body>
+</html>
