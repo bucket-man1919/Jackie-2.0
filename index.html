@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Snacks">
+<meta name="apple-mobile-web-app-title" content="Jackie 2.0">
 <meta name="theme-color" content="#11151a">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2311151a'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle'%3E%F0%9F%8F%83%3C/text%3E%3C/svg%3E">
-<title>Movement Snacks</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+<title>Jackie 2.0 — Two Stiff, Two Flexible</title>
 <style>
   :root{
     --bg:#11151a; --card:#1b212b; --card2:#232b37; --line:#2c3543;
@@ -40,14 +41,18 @@
     border:1px solid var(--line); border-radius:14px; padding:11px; margin:4px 0 8px; font-size:14px;}
   .streak b{color:var(--amber); font-size:18px;}
   .secthead{font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:14px 2px 4px;}
-  .item{display:flex; align-items:center; gap:11px; width:100%; padding:13px 14px; margin:6px 0; border-radius:13px;
-    background:var(--card); border:1px solid var(--line); text-align:left;}
-  .item:active{background:var(--card2);}
+  .item{display:flex; align-items:stretch; width:100%; margin:6px 0; border-radius:13px;
+    background:var(--card); border:1px solid var(--line); overflow:hidden;}
+  .itemmain{flex:1; display:flex; align-items:center; gap:11px; padding:13px 14px; background:none; border:none; text-align:left; color:inherit; font:inherit;}
+  .itemmain:active{background:var(--card2);}
+  .watch{flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:50px; color:var(--blue); font-size:17px; text-decoration:none; border-left:1px solid var(--line);}
+  .watch:active{background:var(--card2);}
   .chk{flex:0 0 auto; width:22px; height:22px; border-radius:6px; border:2px solid var(--muted);
     display:flex; align-items:center; justify-content:center; font-size:14px; color:#06140d;}
   .item.done .chk{background:var(--green); border-color:var(--green);}
   .item.done .nm{color:var(--muted); text-decoration:line-through;}
   .itxt{flex:1;}
+  .howto{color:var(--blue); font-size:12.5px; text-decoration:none; margin-top:7px;}
   .nm{font-size:15px; font-weight:600;}
   .ds{font-size:11.5px; color:var(--muted); margin-top:1px;}
   .go{font-size:11px; color:var(--blue); white-space:nowrap;}
@@ -88,8 +93,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>🏃 Movement Snacks</h1>
-    <div class="tagline">Tiny doses, all day. Jackie 2.0</div>
+    <h1>🎬 Two Stiff, Two Flexible</h1>
+    <div class="tagline">Jackie 2.0 · The Mobility Sequel</div>
   </header>
 
   <!-- HOME -->
@@ -103,8 +108,8 @@
       <span class="sub">Choose any exercise from the list</span></button>
     <button class="btn" onclick="show('config')">⏱️ Interval timer
       <span class="sub">Custom work / rest rounds</span></button>
-    <button class="btn" onclick="show('info')" style="background:none;border:1px dashed var(--line);color:var(--muted)">📲 Add to Home Screen
-      <span class="sub">Make this an app icon</span></button>
+    <button class="btn" onclick="show('resources')">📺 Resources
+      <span class="sub">Longer follow-along videos &amp; guides</span></button>
     <footer>Not medical advice. Stop if anything hurts.</footer>
   </section>
 
@@ -144,6 +149,7 @@
     </div>
     <div class="snackname" id="snackName"></div>
     <div class="snackdose" id="snackDose"></div>
+    <a class="howto" id="howtoLink" target="_blank" rel="noopener">▶︎ Not sure? Watch how-to</a>
     <div class="tally" id="tally"></div>
     <div class="stagebtns">
       <button class="pause" id="pauseBtn" onclick="togglePause()">Pause</button>
@@ -196,6 +202,21 @@
     <div class="hint">Default 10/10 × 8 ≈ 2.5 min.</div>
   </section>
 
+  <!-- RESOURCES -->
+  <section id="resources" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="secthead">Follow-along videos</div>
+    <a class="btn" href="https://www.youtube.com/watch?v=FkpLS_mgEf4" target="_blank" rel="noopener">🌙 McGill Big 3 — follow along<span class="sub">Do the whole evening routine with a coach · ~10 min</span></a>
+    <a class="btn" href="https://www.youtube.com/watch?v=XEn8hy1OJA4" target="_blank" rel="noopener">🦵 Tight hips &amp; low-back mobility<span class="sub">Loosen the desk stiffness · ~10 min</span></a>
+    <a class="btn" href="https://www.youtube.com/watch?v=GNS_qbYX2ms" target="_blank" rel="noopener">🪑 Desk posture reset<span class="sub">Quick mid-workday mobility · ~4 min</span></a>
+    <a class="btn" href="https://www.youtube.com/watch?v=7sHIiE-c_iM" target="_blank" rel="noopener">💺 Desk worker upper-body stretch<span class="sub">Neck, shoulders, upper back</span></a>
+    <div class="secthead">Read / reference</div>
+    <a class="btn" href="https://squatuniversity.com/2018/06/21/the-mcgill-big-3-for-core-stability/" target="_blank" rel="noopener">📖 Squat University: the Big 3 explained<span class="sub">Why the curl-up, bird dog &amp; side plank work</span></a>
+    <a class="btn" href="https://mikereinold.com/ankle-mobility-exercises-to-improve-dorsiflexion/" target="_blank" rel="noopener">🦶 Ankle mobility (Mike Reinold)<span class="sub">From the physio behind Champion PT</span></a>
+    <div class="hint">Tip: each exercise screen also has a “Watch how-to” link that opens a quick clip for that specific movement.</div>
+    <div style="height:14px"></div>
+  </section>
+
   <!-- INFO -->
   <section id="info" class="screen info">
     <button class="back" onclick="show('home')">‹ Home</button>
@@ -243,9 +264,19 @@ const EX = {
   ankcircle: {name:"Ankle circles", dose:"20s each side · slow, full circles", pos:"sitting", type:"hold", seconds:20, eachSide:true, snack:true}
 };
 const ROUTINES = {
-  morning: ["catcow","hipflexor","glutebridge","clamshell"],
+  morning: ["catcow","hipflexor","glutebridge","clamshell","deadbug"],
   evening: ["curlup","birddog","sideplank"]
 };
+function ytURL(ex){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(ex.name.replace(/\(.*?\)/g,'').trim()+' exercise how to'); }
+function makeItem(ex, opts){
+  const row=document.createElement('div'); row.className='item'+(opts.done?' done':'');
+  const main=document.createElement('button'); main.className='itemmain';
+  main.innerHTML=(opts.showChk?'<span class="chk">'+(opts.done?'✓':'')+'</span>':'')+'<span class="itxt"><span class="nm">'+ex.name+'</span><span class="ds">'+ex.dose+'</span></span>';
+  main.onclick=opts.onPlay;
+  const watch=document.createElement('a'); watch.className='watch'; watch.href=ytURL(ex); watch.target='_blank'; watch.rel='noopener'; watch.textContent='▶'; watch.title='Watch how-to';
+  row.appendChild(main); row.appendChild(watch);
+  return row;
+}
 
 /* ===== audio ===== */
 let actx=null;
@@ -307,6 +338,7 @@ function playExercise(ex, onDone){
   show('stage'); stopped=false; paused=false; initRing();
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo(ex.name, ex.dose); setTally('');
+  document.getElementById('howtoLink').href=ytURL(ex);
   const sides = ex.eachSide ? ['Left','Right'] : [null];
   let si=0;
   function finishAll(){ beep(880,0.12); setTimeout(()=>beep(1175,0.16),120); onDone(); }
@@ -366,10 +398,8 @@ function buildList(){
   [['standing','Standing'],['sitting','Sitting'],['floor','On the floor']].forEach(([group,label])=>{
     const h=document.createElement('div'); h.className='secthead'; h.textContent=label; c.appendChild(h);
     Object.keys(EX).filter(k=>EX[k].pos===group).forEach(k=>{
-      const ex=EX[k]; const b=document.createElement('button'); b.className='btn'; b.style.margin='5px 0';
-      b.innerHTML='<span>'+ex.name+'</span><span class="sub">'+ex.dose+'</span>';
-      b.onclick=()=> playExercise(ex, ()=> showDone('✓ Done', ex.name, [{label:'Pick another',onclick:()=>show('list'),primary:true},{label:'Home',onclick:()=>show('home')}]));
-      c.appendChild(b);
+      const ex=EX[k];
+      c.appendChild(makeItem(ex, {showChk:false, done:false, onPlay:()=> playExercise(ex, ()=> showDone('✓ Done', ex.name, [{label:'Pick another',onclick:()=>show('list'),primary:true},{label:'Home',onclick:()=>show('home')}]))}));
     });
   });
 }
@@ -397,10 +427,7 @@ function renderToday(){
     const c=document.getElementById(which+'List'); c.innerHTML='';
     ROUTINES[which].forEach(id=>{
       const ex=EX[id]; const done=isDone(which,id);
-      const b=document.createElement('button'); b.className='item'+(done?' done':'');
-      b.innerHTML='<span class="chk">'+(done?'✓':'')+'</span><span class="itxt"><span class="nm">'+ex.name+'</span><span class="ds">'+ex.dose+'</span></span><span class="go">Do ▸</span>';
-      b.onclick=()=> playExercise(ex, ()=>{ markDone(which,id); if(which==='evening') refreshStreak(); renderToday(); show('today'); });
-      c.appendChild(b);
+      c.appendChild(makeItem(ex, {showChk:true, done:done, onPlay:()=> playExercise(ex, ()=>{ markDone(which,id); if(which==='evening') refreshStreak(); renderToday(); show('today'); })}));
     });
   });
   refreshStreak();
