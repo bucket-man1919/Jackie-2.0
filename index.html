@@ -49,6 +49,8 @@
   .watch:active{background:var(--card2);}
   .chk{flex:0 0 auto; width:22px; height:22px; border-radius:6px; border:2px solid var(--muted);
     display:flex; align-items:center; justify-content:center; font-size:14px; color:#06140d;}
+  .chkbtn{flex:0 0 auto; display:flex; align-items:center; padding:0 13px; background:none; border:none; border-right:1px solid var(--line);}
+  .chkbtn:active{background:var(--card2);}
   .item.done .chk{background:var(--green); border-color:var(--green);}
   .item.done .nm{color:var(--muted); text-decoration:line-through;}
   .itxt{flex:1;}
@@ -123,7 +125,7 @@
     <button class="btn primary startrow" onclick="startRoutine('morning')">▶︎ Start morning routine</button>
     <div class="secthead">🌙 Evening &mdash; the Big 3 (keystone)</div>
     <div id="eveningList"></div>
-    <button class="btn primary startrow" onclick="show('eveninglen')">▶︎ Start evening routine</button>
+    <button class="btn primary startrow" onclick="chooseLength({routine:true})">▶︎ Start evening routine</button>
     <div class="hint">Tap any exercise to do just that one, or start a routine to run them in order with a breather between each.</div>
     <div style="height:14px"></div>
   </section>
@@ -132,12 +134,12 @@
   <section id="eveninglen" class="screen">
     <button class="back" onclick="show('today')">‹ Back</button>
     <div class="secthead" style="text-align:center">How long tonight? (same 10s holds, fewer reps)</div>
-    <button class="btn" onclick="startRoutine('evening',[3,2,1])">🟢 Short — 3 · 2 · 1
-      <span class="sub">Time-pressed but still done · ~10 min</span></button>
-    <button class="btn" onclick="startRoutine('evening',[5,3,1])">🟡 Medium — 5 · 3 · 1
-      <span class="sub">The book's lead example · ~13 min</span></button>
-    <button class="btn" onclick="startRoutine('evening',[6,4,2])">🔵 Long — 6 · 4 · 2
-      <span class="sub">Full McGill pyramid · ~17 min</span></button>
+    <button class="btn" onclick="applyLength([3,2,1])">🟢 Short — 3 · 2 · 1
+      <span class="sub">Time-pressed but still done · ~8 min</span></button>
+    <button class="btn" onclick="applyLength([5,3,1])">🟡 Medium — 5 · 3 · 1
+      <span class="sub">The book's lead example · ~11 min</span></button>
+    <button class="btn" onclick="applyLength([6,4,2])">🔵 Long — 6 · 4 · 2
+      <span class="sub">Full McGill pyramid · ~13 min</span></button>
     <div class="hint">All three are sanctioned by the book — pick what your evening allows. Doing the short one beats skipping it.</div>
   </section>
 
@@ -256,8 +258,8 @@ const EX = {
   glutebridge:{name:"Glute Bridge", dose:"12 reps · 2s up, 2s squeeze, 2s down", pos:"floor", type:"reps", reps:12, up:2, hold:2, down:2, snack:true},
   clamshell: {name:"Clamshell", dose:"12 reps each side · slow, hips still", pos:"floor", type:"reps", reps:12, up:2, hold:1, down:2, eachSide:true, snack:true},
   deadbug:   {name:"Dead Bug", dose:"8 reps · low back stays down", pos:"floor", type:"reps", reps:8, up:2, hold:0, down:2, snack:true},
-  birddog:   {name:"Bird Dog (McGill)", dose:"6 → 4 → 2 each side · 10s holds, breathe", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, eachSide:true, rest:25, snack:false},
-  curlup:    {name:"Curl-Up (McGill)", dose:"6 → 4 → 2 · 10s holds, hands under low back", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, rest:25, snack:false},
+  birddog:   {name:"Bird Dog (McGill)", dose:"6 → 4 → 2 · alternate opposite arm/leg each rep · 10s holds", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, rest:25, snack:false},
+  curlup:    {name:"Curl-Up (McGill)", dose:"6 → 4 → 2 · 10s holds · one knee bent, switch which knee each set", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, rest:25, snack:false},
   sideplank: {name:"Side Plank (McGill)", dose:"6 → 4 → 2 each side · 10s holds, “squat hips up”", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, eachSide:true, rest:25, snack:false},
   figure4:   {name:"Supine figure-4 stretch", dose:"30s each side · SI-friendly", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true},
   squat:     {name:"Bodyweight Squat", dose:"10 reps · 2s down, pause, 2s up", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:2, descend:true, snack:true},
@@ -284,8 +286,14 @@ const ROUTINES = {
 function ytURL(ex){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(ex.name.replace(/\(.*?\)/g,'').trim()+' exercise how to'); }
 function makeItem(ex, opts){
   const row=document.createElement('div'); row.className='item'+(opts.done?' done':'');
+  if(opts.onToggle){
+    const chk=document.createElement('button'); chk.className='chkbtn'; chk.title='Tap to mark done / undone';
+    chk.innerHTML='<span class="chk">'+(opts.done?'✓':'')+'</span>';
+    chk.onclick=opts.onToggle;
+    row.appendChild(chk);
+  }
   const main=document.createElement('button'); main.className='itemmain';
-  main.innerHTML=(opts.showChk?'<span class="chk">'+(opts.done?'✓':'')+'</span>':'')+'<span class="itxt"><span class="nm">'+ex.name+'</span><span class="ds">'+ex.dose+'</span></span>';
+  main.innerHTML=((opts.showChk&&!opts.onToggle)?'<span class="chk">'+(opts.done?'✓':'')+'</span>':'')+'<span class="itxt"><span class="nm">'+ex.name+'</span><span class="ds">'+ex.dose+'</span></span>';
   main.onclick=opts.onPlay;
   const watch=document.createElement('a'); watch.className='watch'; watch.href=ytURL(ex); watch.target='_blank'; watch.rel='noopener'; watch.textContent='▶'; watch.title='Watch how-to';
   row.appendChild(main); row.appendChild(watch);
@@ -469,6 +477,7 @@ function dateKey(d){ d=d||new Date(); const y=d.getFullYear(),m=String(d.getMont
 function loadLog(){ try{return JSON.parse(localStorage.getItem(LKEY))||{};}catch(e){return {};} }
 function saveLog(l){ try{localStorage.setItem(LKEY,JSON.stringify(l));}catch(e){} }
 function markDone(which,id){ const l=loadLog(); const k=dateKey(); l[k]=l[k]||{}; l[k][which]=l[k][which]||{}; l[k][which][id]=true; saveLog(l); }
+function setDone(which,id,val){ const l=loadLog(),k=dateKey(); l[k]=l[k]||{}; l[k][which]=l[k][which]||{}; if(val) l[k][which][id]=true; else delete l[k][which][id]; saveLog(l); }
 function isDone(which,id){ const l=loadLog(),k=dateKey(); return !!(l[k]&&l[k][which]&&l[k][which][id]); }
 function eveningDoneOn(l,k){ return ROUTINES.evening.every(id=> l[k]&&l[k].evening&&l[k].evening[id]); }
 function computeStreak(){
@@ -486,7 +495,10 @@ function renderToday(){
     const c=document.getElementById(which+'List'); c.innerHTML='';
     ROUTINES[which].forEach(id=>{
       const ex=EX[id]; const done=isDone(which,id);
-      c.appendChild(makeItem(ex, {showChk:true, done:done, onPlay:()=> playExercise(ex, ()=>{ markDone(which,id); if(which==='evening') refreshStreak(); renderToday(); show('today'); })}));
+      c.appendChild(makeItem(ex, {showChk:true, done:done,
+        onToggle:()=>{ setDone(which,id,!isDone(which,id)); if(which==='evening') refreshStreak(); renderToday(); },
+        onPlay:()=>{ if(ex.sets){ chooseLength({ex:ex, which:which, id:id}); } else { playExercise(ex, ()=>{ markDone(which,id); renderToday(); show('today'); }); } }
+      }));
     });
   });
   refreshStreak();
@@ -495,6 +507,13 @@ function openToday(){ renderToday(); show('today'); }
 
 /* ===== routines with breaks ===== */
 let routineActive=null;
+let pendingLength=null;
+function chooseLength(target){ pendingLength=target; show('eveninglen'); }
+function applyLength(pyr){
+  const t=pendingLength; pendingLength=null;
+  if(t && t.ex){ playExercise(t.ex, ()=>{ markDone(t.which,t.id); if(t.which==='evening') refreshStreak(); renderToday(); show('today'); }, pyr); return; }
+  startRoutine('evening', pyr);
+}
 function startRoutine(which, pyramid){
   initAudio(); routineActive=which;
   const ids=ROUTINES[which]; let i=0;
