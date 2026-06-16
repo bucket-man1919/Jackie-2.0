@@ -123,9 +123,22 @@
     <button class="btn primary startrow" onclick="startRoutine('morning')">▶︎ Start morning routine</button>
     <div class="secthead">🌙 Evening &mdash; the Big 3 (keystone)</div>
     <div id="eveningList"></div>
-    <button class="btn primary startrow" onclick="startRoutine('evening')">▶︎ Start evening routine</button>
+    <button class="btn primary startrow" onclick="show('eveninglen')">▶︎ Start evening routine</button>
     <div class="hint">Tap any exercise to do just that one, or start a routine to run them in order with a breather between each.</div>
     <div style="height:14px"></div>
+  </section>
+
+  <!-- EVENING LENGTH -->
+  <section id="eveninglen" class="screen">
+    <button class="back" onclick="show('today')">‹ Back</button>
+    <div class="secthead" style="text-align:center">How long tonight? (same 10s holds, fewer reps)</div>
+    <button class="btn" onclick="startRoutine('evening',[3,2,1])">🟢 Short — 3 · 2 · 1
+      <span class="sub">Time-pressed but still done · ~10 min</span></button>
+    <button class="btn" onclick="startRoutine('evening',[5,3,1])">🟡 Medium — 5 · 3 · 1
+      <span class="sub">The book's lead example · ~13 min</span></button>
+    <button class="btn" onclick="startRoutine('evening',[6,4,2])">🔵 Long — 6 · 4 · 2
+      <span class="sub">Full McGill pyramid · ~17 min</span></button>
+    <div class="hint">All three are sanctioned by the book — pick what your evening allows. Doing the short one beats skipping it.</div>
   </section>
 
   <!-- WHERE -->
@@ -342,7 +355,7 @@ function setStageInfo(n,d){ document.getElementById('snackName').textContent=n||
 function setTally(t){ document.getElementById('tally').textContent=t||''; }
 
 /* ===== play one exercise, call onDone() when complete ===== */
-function playExercise(ex, onDone){
+function playExercise(ex, onDone, setsOverride){
   show('stage'); stopped=false; paused=false; initRing();
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo(ex.name, ex.dose); setTally('');
@@ -359,7 +372,7 @@ function playExercise(ex, onDone){
       setTally(ex.eachSide ? sideLabel+' side' : '');
       runCountdown(ex.seconds, 'var(--amber)', ex.eachSide?(sideLabel+' side'):'Hold', ()=>{ beep(660,0.1); advance(); });
     } else {
-      const sets = ex.sets || [ex.reps];   // single set unless a pyramid is defined
+      const sets = (setsOverride && ex.sets) ? setsOverride : (ex.sets || [ex.reps]);   // evening-length override, else default
       let si2=0;
       function doSet(){
         if(stopped) return;
@@ -482,7 +495,7 @@ function openToday(){ renderToday(); show('today'); }
 
 /* ===== routines with breaks ===== */
 let routineActive=null;
-function startRoutine(which){
+function startRoutine(which, pyramid){
   initAudio(); routineActive=which;
   const ids=ROUTINES[which]; let i=0;
   function step(){
@@ -494,7 +507,7 @@ function startRoutine(which){
       i++;
       if(i<ids.length){ showReady(which, EX[ids[i]], step); }
       else finishRoutine(which);
-    });
+    }, pyramid);
   }
   step();
 }
