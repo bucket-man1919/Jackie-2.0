@@ -31,7 +31,7 @@
   button{font-family:inherit; cursor:pointer; border:none; color:inherit;}
   .btn{display:block; width:100%; padding:16px; margin:7px 0; border-radius:14px;
     background:var(--card); color:var(--ink); font-size:16px; font-weight:600;
-    text-align:left; border:1px solid var(--line); transition:transform .05s, background .15s;}
+    text-align:left; border:1px solid var(--line); transition:transform .05s, background .15s; text-decoration:none;}
   .btn:active{transform:scale(.985); background:var(--card2);}
   .btn .sub{display:block; font-weight:400; font-size:12.5px; color:var(--muted); margin-top:3px;}
   .btn.primary{background:linear-gradient(135deg,#1f6f4f,#46c98b); border:none; color:#06140d;}
@@ -240,13 +240,13 @@ const EX = {
   catcow:    {name:"Cat–cow", dose:"8 slow reps · move the whole spine", pos:"floor", type:"reps", reps:8, up:3, hold:0, down:3, snack:true},
   hipflexor: {name:"Kneeling hip-flexor stretch", dose:"30s each side · glute on, ribs down", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true},
   glutebridge:{name:"Glute bridge", dose:"12 reps · 2s up, 2s squeeze, 2s down", pos:"floor", type:"reps", reps:12, up:2, hold:2, down:2, snack:true},
-  clamshell: {name:"Clamshell", dose:"15 reps each side · hips still", pos:"floor", type:"reps", reps:15, up:1, hold:1, down:1, eachSide:true, snack:true},
+  clamshell: {name:"Clamshell", dose:"12 reps each side · slow, hips still", pos:"floor", type:"reps", reps:12, up:2, hold:1, down:2, eachSide:true, snack:true},
   deadbug:   {name:"Dead bug", dose:"8 reps · low back stays down", pos:"floor", type:"reps", reps:8, up:2, hold:0, down:2, snack:true},
-  birddog:   {name:"Bird dog", dose:"8 reps · reach + 3s hold, no wobble", pos:"floor", type:"reps", reps:8, up:2, hold:3, down:2, snack:true},
-  curlup:    {name:"Curl-up (McGill)", dose:"6 holds · hands under low back, 8s holds", pos:"floor", type:"reps", reps:6, up:1, hold:8, down:1, snack:true},
-  sideplank: {name:"Side plank", dose:"25s each side · straight line", pos:"floor", type:"hold", seconds:25, eachSide:true, snack:true},
+  birddog:   {name:"Bird dog (McGill)", dose:"6 → 4 → 2 each side · 10s holds, breathe", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, eachSide:true, rest:25, snack:false},
+  curlup:    {name:"Curl-up (McGill)", dose:"6 → 4 → 2 · 10s holds, hands under low back", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, rest:25, snack:false},
+  sideplank: {name:"Side plank (McGill)", dose:"6 → 4 → 2 each side · 10s holds, “squat hips up”", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, eachSide:true, rest:25, snack:false},
   figure4:   {name:"Supine figure-4 stretch", dose:"30s each side · SI-friendly", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true},
-  squat:     {name:"Bodyweight squat", dose:"10 reps · sit back, chest tall", pos:"standing", type:"reps", reps:10, up:1, hold:0, down:2, snack:true},
+  squat:     {name:"Bodyweight squat", dose:"10 reps · 2s down, pause, 2s up", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:2, descend:true, snack:true},
   calfraise: {name:"Standing calf raise", dose:"15 reps · 1s up, 1s squeeze, 2s down", pos:"standing", type:"reps", reps:15, up:1, hold:1, down:2, snack:true},
   hiphinge:  {name:"Hip hinge", dose:"8 reps · butt back, flat back", pos:"standing", type:"reps", reps:8, up:2, hold:0, down:2, snack:true},
   balance:   {name:"Single-leg balance", dose:"30s each side · soft knee", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true},
@@ -351,17 +351,44 @@ function playExercise(ex, onDone){
       setTally(ex.eachSide ? sideLabel+' side' : '');
       runCountdown(ex.seconds, 'var(--amber)', ex.eachSide?(sideLabel+' side'):'Hold', ()=>{ beep(660,0.1); advance(); });
     } else {
-      let rep=0;
-      function doRep(){
+      const sets = ex.sets || [ex.reps];   // single set unless a pyramid is defined
+      let si2=0;
+      function doSet(){
         if(stopped) return;
-        if(rep>=ex.reps){ advance(); return; }
-        rep++; setTally((ex.eachSide? sideLabel+' · ':'')+rep+' / '+ex.reps);
-        runPhase(ex.up||2, 0, 1, 'var(--green)', 'Up', 900, 'up', ()=>{
-          const lower=()=> runPhase(ex.down||2, 1, 0, 'var(--blue)', 'Down', 620, 'up', ()=>{ beep(660,0.09); doRep(); });
-          if(ex.hold>0) runPhase(ex.hold, 1, 1, 'var(--amber)', 'Hold', 520, 'down', lower); else lower();
-        });
+        if(si2>=sets.length){ advance(); return; }
+        const target=sets[si2], setNo=si2+1; si2++;
+        let rep=0;
+        function doRep(){
+          if(stopped) return;
+          if(rep>=target){
+            if(si2<sets.length) runCountdown(ex.rest||20, 'var(--blue)', 'Rest — next set', doSet);
+            else advance();
+            return;
+          }
+          rep++;
+          const setlbl = sets.length>1 ? ('Set '+setNo+'/'+sets.length+' · ') : '';
+          setTally((ex.eachSide? sideLabel+' · ':'')+setlbl+rep+' / '+target);
+          // each phase: [label, durSec, fromFrac, toFrac, color, beepFreq, numMode]
+          let seq;
+          if(ex.descend){ // movements that start by lowering (squats, hinges)
+            seq=[['Down', ex.down||2, 0,1, 'var(--blue)', 620, 'up']];
+            if(ex.hold>0) seq.push(['Hold', ex.hold, 1,1, 'var(--amber)', 520, 'down']);
+            seq.push(['Up', ex.up||2, 1,0, 'var(--green)', 900, 'up']);
+          } else {
+            seq=[['Up', ex.up||2, 0,1, 'var(--green)', 900, 'up']];
+            if(ex.hold>0) seq.push(['Hold', ex.hold, 1,1, 'var(--amber)', 520, 'down']);
+            seq.push(['Down', ex.down||2, 1,0, 'var(--blue)', 620, 'up']);
+          }
+          let i=0;
+          (function next(){
+            if(stopped) return;
+            if(i>=seq.length){ beep(660,0.09); doRep(); return; }
+            const p=seq[i++]; runPhase(p[1],p[2],p[3],p[4],p[0],p[5],p[6], next);
+          })();
+        }
+        doRep();
       }
-      doRep();
+      doSet();
     }
   }
   nextSide();
@@ -380,26 +407,37 @@ function showDone(title, sub, buttons){
 /* ===== Surprise me ===== */
 let lastPos='any';
 const POSLABEL={standing:'standing',sitting:'sitting',floor:'on the floor',any:'anywhere'};
+function snackDone(ex){
+  showDone('✓ Nice', ex.name, [
+    {label:'🔁 Repeat (another set)', onclick:()=>playExercise(ex, ()=>snackDone(ex)), primary:true},
+    {label:'🎲 Another ('+POSLABEL[lastPos]+')', onclick:()=>surprise(lastPos)},
+    {label:'Change spot', onclick:()=>show('where')},
+    {label:'Home', onclick:()=>show('home')}
+  ]);
+}
 function surprise(pos){
   initAudio(); lastPos=pos;
   const pool=Object.keys(EX).filter(k=>EX[k].snack && (pos==='any'||EX[k].pos===pos)).map(k=>EX[k]);
   if(!pool.length){ showDone('Hmm','No snacks for that spot.',[{label:'Back',onclick:()=>show('where'),primary:true}]); return; }
   const ex=pool[Math.floor(Math.random()*pool.length)];
-  playExercise(ex, ()=> showDone('✓ Nice', ex.name, [
-    {label:'Another ('+POSLABEL[lastPos]+')', onclick:()=>surprise(lastPos), primary:true},
-    {label:'Change spot', onclick:()=>show('where')},
-    {label:'Home', onclick:()=>show('home')}
-  ]));
+  playExercise(ex, ()=>snackDone(ex));
 }
 
 /* ===== Pick a snack list ===== */
+function listDone(ex){
+  showDone('✓ Done', ex.name, [
+    {label:'🔁 Repeat (another set)', onclick:()=>playExercise(ex, ()=>listDone(ex)), primary:true},
+    {label:'Pick another', onclick:()=>show('list')},
+    {label:'Home', onclick:()=>show('home')}
+  ]);
+}
 function buildList(){
   const c=document.getElementById('listItems'); c.innerHTML='';
   [['standing','Standing'],['sitting','Sitting'],['floor','On the floor']].forEach(([group,label])=>{
     const h=document.createElement('div'); h.className='secthead'; h.textContent=label; c.appendChild(h);
-    Object.keys(EX).filter(k=>EX[k].pos===group).forEach(k=>{
+    Object.keys(EX).filter(k=>EX[k].pos===group && EX[k].snack).forEach(k=>{
       const ex=EX[k];
-      c.appendChild(makeItem(ex, {showChk:false, done:false, onPlay:()=> playExercise(ex, ()=> showDone('✓ Done', ex.name, [{label:'Pick another',onclick:()=>show('list'),primary:true},{label:'Home',onclick:()=>show('home')}]))}));
+      c.appendChild(makeItem(ex, {showChk:false, done:false, onPlay:()=> playExercise(ex, ()=>listDone(ex))}));
     });
   });
 }
