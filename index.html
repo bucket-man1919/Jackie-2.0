@@ -110,6 +110,7 @@
       <span class="sub">Custom work / rest rounds</span></button>
     <button class="btn" onclick="show('resources')">📺 Resources
       <span class="sub">Longer follow-along videos &amp; guides</span></button>
+    <button class="btn" id="voiceToggle" onclick="toggleVoice()" style="background:none;border:1px dashed var(--line);color:var(--muted);text-align:center">🔊 Voice cues: On</button>
     <footer>Not medical advice. Stop if anything hurts.</footer>
   </section>
 
@@ -283,6 +284,13 @@ let actx=null;
 function initAudio(){ try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){} }
 function beep(freq,dur,vol){ if(!actx) return; try{ const o=actx.createOscillator(),g=actx.createGain(); o.type='sine'; o.frequency.value=freq; o.connect(g); g.connect(actx.destination); const t=actx.currentTime; g.gain.setValueAtTime(vol||0.18,t); o.start(t); g.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.08)); o.stop(t+(dur||0.08)+0.02);}catch(e){} }
 
+/* ===== voice cues (Web Speech) ===== */
+let voiceOn = (localStorage.getItem('jackie_voice')||'on')!=='off';
+function speak(t){ if(!voiceOn||!t) return; try{ if(!('speechSynthesis' in window)) return; const u=new SpeechSynthesisUtterance(String(t).replace(/\s*—\s*/g,' ')); u.rate=1.05; u.pitch=1; u.volume=1; speechSynthesis.speak(u);}catch(e){} }
+function primeVoice(){ try{ if('speechSynthesis' in window){ speechSynthesis.getVoices(); const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
+function updateVoiceBtn(){ const b=document.getElementById('voiceToggle'); if(b) b.textContent = voiceOn?'🔊 Voice cues: On':'🔇 Voice cues: Off (beeps only)'; }
+function toggleVoice(){ voiceOn=!voiceOn; try{localStorage.setItem('jackie_voice', voiceOn?'on':'off');}catch(e){} updateVoiceBtn(); if(voiceOn){ primeVoice(); speak('Voice on'); } else { try{speechSynthesis.cancel();}catch(e){} } }
+
 /* ===== nav ===== */
 function show(id){ stopEngine(); document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
@@ -294,13 +302,13 @@ function setRing(frac,color){ const r=ringEl(); r.style.stroke=color; r.style.st
 
 /* ===== engine ===== */
 let rafId=null, paused=false, stopped=true;
-function stopEngine(){ stopped=true; paused=false; if(rafId){cancelAnimationFrame(rafId); rafId=null;} const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pause'; }
+function stopEngine(){ stopped=true; paused=false; if(rafId){cancelAnimationFrame(rafId); rafId=null;} try{if('speechSynthesis' in window) speechSynthesis.cancel();}catch(e){} const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pause'; }
 function togglePause(){ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'Resume':'Pause'; }
 function stopStage(){ routineActive=null; stopEngine(); show('home'); }
 
 function runPhase(durSec, fromFrac, toFrac, color, label, beepFreq, numMode, onDone){
   let elapsed=0, last=performance.now(), lastNum=-1;
-  document.getElementById('phaseLabel').textContent=label;
+  document.getElementById('phaseLabel').textContent=label; speak(label);
   function frame(now){
     if(stopped) return;
     if(!paused) elapsed += now-last;
@@ -316,7 +324,7 @@ function runPhase(durSec, fromFrac, toFrac, color, label, beepFreq, numMode, onD
 }
 function runCountdown(durSec, color, label, onDone){
   let elapsed=0, last=performance.now(), lastSec=-1;
-  document.getElementById('phaseLabel').textContent=label;
+  document.getElementById('phaseLabel').textContent=label; speak(label);
   function frame(now){
     if(stopped) return;
     if(!paused) elapsed += now-last;
@@ -341,7 +349,7 @@ function playExercise(ex, onDone){
   document.getElementById('howtoLink').href=ytURL(ex);
   const sides = ex.eachSide ? ['Left','Right'] : [null];
   let si=0;
-  function finishAll(){ beep(880,0.12); setTimeout(()=>beep(1175,0.16),120); onDone(); }
+  function finishAll(){ beep(880,0.12); setTimeout(()=>beep(1175,0.16),120); speak('Done'); onDone(); }
   function nextSide(){
     if(stopped) return;
     if(si>=sides.length){ finishAll(); return; }
@@ -532,8 +540,8 @@ function startInterval(){
 }
 
 /* ===== init ===== */
-buildList(); initRing(); refreshStreak();
-document.body.addEventListener('click', initAudio, {once:true});
+buildList(); initRing(); refreshStreak(); updateVoiceBtn();
+document.body.addEventListener('click', ()=>{ initAudio(); primeVoice(); }, {once:true});
 </script>
 </body>
 </html>
