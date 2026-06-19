@@ -290,7 +290,7 @@ const EX = {
 const ROUTINES = {
   morning: ["catcow","hipflexor","glutebridge","clamshell","deadbug"],
   midday: ["tspine","bandedw","erpress","scappush","inclineplank"],
-  evening: ["curlup","birddog","sideplank"]
+  evening: ["curlup","sideplank","birddog"]
 };
 function ytURL(ex){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(ex.name.replace(/\(.*?\)/g,'').trim()+' exercise how to'); }
 function makeItem(ex, opts){
@@ -398,11 +398,12 @@ function playExercise(ex, onDone, setsOverride){
   // ---- reps (with optional sets pyramid, eachSide, alternating sides, inter-rep rest) ----
   const setsArr = (setsOverride && ex.sets) ? setsOverride : (ex.sets || [ex.reps]);   // evening-length override, else default
   const totalSets = setsArr.length;
+  const sideOrder = ex.leadSide==='Right' ? ['Right','Left'] : ['Left','Right'];   // lead with weaker side if set
   const blocks=[];
-  if(ex.eachSide && ex.altSides){            // alternate sides each set: L6,R6,L4,R4,...
-    setsArr.forEach((target,si2)=>{ ['Left','Right'].forEach(side=>{ blocks.push({side,target,setNo:si2+1}); }); });
-  } else if(ex.eachSide){                     // legacy: all sets on Left, then all on Right
-    ['Left','Right'].forEach(side=>{ setsArr.forEach((target,si2)=>{ blocks.push({side,target,setNo:si2+1}); }); });
+  if(ex.eachSide && ex.altSides){            // alternate sides each set: e.g. L6,R6,L4,R4,...
+    setsArr.forEach((target,si2)=>{ sideOrder.forEach(side=>{ blocks.push({side,target,setNo:si2+1}); }); });
+  } else if(ex.eachSide){                     // legacy: all sets on one side, then all on the other
+    sideOrder.forEach(side=>{ setsArr.forEach((target,si2)=>{ blocks.push({side,target,setNo:si2+1}); }); });
   } else {
     setsArr.forEach((target,si2)=>{ blocks.push({side:null,target,setNo:si2+1}); });
   }
