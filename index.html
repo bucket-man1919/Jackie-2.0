@@ -261,9 +261,9 @@ const EX = {
   glutebridge:{name:"Glute Bridge", dose:"12 reps · 2s up, 2s squeeze, 2s down", pos:"floor", type:"reps", reps:12, up:2, hold:2, down:2, snack:true},
   clamshell: {name:"Clamshell", dose:"12 reps each side · slow, hips still", pos:"floor", type:"reps", reps:12, up:2, hold:1, down:2, eachSide:true, snack:true},
   deadbug:   {name:"Dead Bug", dose:"8 reps · low back stays down", pos:"floor", type:"reps", reps:8, up:2, hold:0, down:2, snack:true},
-  birddog:   {name:"Bird Dog (McGill)", dose:"6 → 4 → 2 · alternate opposite arm/leg each rep · 10s holds", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, rest:25, snack:false},
-  curlup:    {name:"Curl-Up (McGill)", dose:"6 → 4 → 2 · 10s holds · one knee bent, switch which knee each set", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, rest:25, snack:false},
-  sideplank: {name:"Side Plank (McGill)", dose:"6 → 4 → 2 each side · 10s holds, “squat hips up”", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, eachSide:true, rest:25, snack:false},
+  birddog:   {name:"Bird Dog (McGill)", dose:"6 → 4 → 2 · alternate opposite arm/leg each rep · 10s holds, rest between reps", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, repRest:4, rest:25, snack:false},
+  curlup:    {name:"Curl-Up (McGill)", dose:"6 → 4 → 2 · 10s holds · relax all the way down between reps · switch knee each set", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, repRest:4, rest:25, snack:false},
+  sideplank: {name:"Side Plank (McGill)", dose:"6 → 4 → 2 · alternate sides each set · 10s holds, “squat hips up”, come down between reps", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, eachSide:true, altSides:true, repRest:3, rest:12, snack:false},
   figure4:   {name:"Supine figure-4 stretch", dose:"30s each side · SI-friendly", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true},
   squat:     {name:"Bodyweight Squat", dose:"10 reps · 2s down, pause, 2s up", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:2, descend:true, snack:true},
   calfraise: {name:"Standing Calf Raise", dose:"15 reps · 1s up, 1s squeeze, 2s down", pos:"standing", type:"reps", reps:15, up:1, hold:1, down:2, snack:true},
@@ -377,59 +377,82 @@ function playExercise(ex, onDone, setsOverride){
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo(ex.name, ex.dose); setTally('');
   document.getElementById('howtoLink').href=ytURL(ex);
-  const sides = ex.eachSide ? ['Left','Right'] : [null];
-  let si=0;
   function finishAll(){ beep(880,0.12); setTimeout(()=>beep(1175,0.16),120); speak('Done'); onDone(); }
-  function nextSide(){
-    if(stopped) return;
-    if(si>=sides.length){ finishAll(); return; }
-    const sideLabel=sides[si]; si++;
-    const advance=()=>{ if(si<sides.length){ runCountdown(4,'var(--blue)','Switch sides', nextSide); } else finishAll(); };
-    if(ex.type==='hold'){
+
+  if(ex.type==='hold'){
+    const sides = ex.eachSide ? ['Left','Right'] : [null];
+    let si=0;
+    function nextSide(){
+      if(stopped) return;
+      if(si>=sides.length){ finishAll(); return; }
+      const sideLabel=sides[si]; si++;
       setTally(ex.eachSide ? sideLabel+' side' : '');
-      runCountdown(ex.seconds, 'var(--amber)', ex.eachSide?(sideLabel+' side'):'Hold', ()=>{ beep(660,0.1); advance(); });
-    } else {
-      const sets = (setsOverride && ex.sets) ? setsOverride : (ex.sets || [ex.reps]);   // evening-length override, else default
-      let si2=0;
-      function doSet(){
-        if(stopped) return;
-        if(si2>=sets.length){ advance(); return; }
-        const target=sets[si2], setNo=si2+1; si2++;
-        let rep=0;
-        function doRep(){
-          if(stopped) return;
-          if(rep>=target){
-            if(si2<sets.length) runCountdown(ex.rest||20, 'var(--blue)', 'Rest — next set', doSet);
-            else advance();
-            return;
-          }
-          rep++;
-          const setlbl = sets.length>1 ? ('Set '+setNo+'/'+sets.length+' · ') : '';
-          setTally((ex.eachSide? sideLabel+' · ':'')+setlbl+rep+' / '+target);
-          // each phase: [label, durSec, fromFrac, toFrac, color, beepFreq, numMode]
-          let seq;
-          if(ex.descend){ // movements that start by lowering (squats, hinges)
-            seq=[['Down', ex.down||2, 0,1, 'var(--blue)', 620, 'up']];
-            if(ex.hold>0) seq.push(['Hold', ex.hold, 1,1, 'var(--amber)', 520, 'down']);
-            seq.push(['Up', ex.up||2, 1,0, 'var(--green)', 900, 'up']);
-          } else {
-            seq=[['Up', ex.up||2, 0,1, 'var(--green)', 900, 'up']];
-            if(ex.hold>0) seq.push(['Hold', ex.hold, 1,1, 'var(--amber)', 520, 'down']);
-            seq.push(['Down', ex.down||2, 1,0, 'var(--blue)', 620, 'up']);
-          }
-          let i=0;
-          (function next(){
-            if(stopped) return;
-            if(i>=seq.length){ beep(660,0.09); doRep(); return; }
-            const p=seq[i++]; runPhase(p[1],p[2],p[3],p[4],p[0],p[5],p[6], next);
-          })();
-        }
-        doRep();
-      }
-      doSet();
+      runCountdown(ex.seconds, 'var(--amber)', ex.eachSide?(sideLabel+' side'):'Hold', ()=>{ beep(660,0.1);
+        if(si<sides.length) runCountdown(4,'var(--blue)','Switch sides', nextSide); else finishAll();
+      });
     }
+    nextSide();
+    return;
   }
-  nextSide();
+
+  // ---- reps (with optional sets pyramid, eachSide, alternating sides, inter-rep rest) ----
+  const setsArr = (setsOverride && ex.sets) ? setsOverride : (ex.sets || [ex.reps]);   // evening-length override, else default
+  const totalSets = setsArr.length;
+  const blocks=[];
+  if(ex.eachSide && ex.altSides){            // alternate sides each set: L6,R6,L4,R4,...
+    setsArr.forEach((target,si2)=>{ ['Left','Right'].forEach(side=>{ blocks.push({side,target,setNo:si2+1}); }); });
+  } else if(ex.eachSide){                     // legacy: all sets on Left, then all on Right
+    ['Left','Right'].forEach(side=>{ setsArr.forEach((target,si2)=>{ blocks.push({side,target,setNo:si2+1}); }); });
+  } else {
+    setsArr.forEach((target,si2)=>{ blocks.push({side:null,target,setNo:si2+1}); });
+  }
+  function restBetween(prev,next){
+    if(ex.eachSide && ex.altSides) return {sec:ex.rest||12, color:'var(--blue)', label:'Rest — switch sides'};
+    if(ex.eachSide && prev.side!==next.side) return {sec:4, color:'var(--blue)', label:'Switch sides'};
+    return {sec:ex.rest||20, color:'var(--blue)', label:'Rest — next set'};
+  }
+  let bi=0;
+  function nextBlock(){
+    if(stopped) return;
+    if(bi>=blocks.length){ finishAll(); return; }
+    const blk=blocks[bi]; bi++;
+    const target=blk.target;
+    let rep=0;
+    function doRep(){
+      if(stopped) return;
+      if(rep>=target){
+        if(bi<blocks.length){ const r=restBetween(blk,blocks[bi]); runCountdown(r.sec, r.color, r.label, nextBlock); }
+        else finishAll();
+        return;
+      }
+      rep++;
+      const setlbl = totalSets>1 ? ('Set '+blk.setNo+'/'+totalSets+' · ') : '';
+      setTally((blk.side? blk.side+' · ':'')+setlbl+rep+' / '+target);
+      // each phase: [label, durSec, fromFrac, toFrac, color, beepFreq, numMode]
+      let seq;
+      if(ex.descend){ // movements that start by lowering (squats, hinges)
+        seq=[['Down', ex.down||2, 0,1, 'var(--blue)', 620, 'up']];
+        if(ex.hold>0) seq.push(['Hold', ex.hold, 1,1, 'var(--amber)', 520, 'down']);
+        seq.push(['Up', ex.up||2, 1,0, 'var(--green)', 900, 'up']);
+      } else {
+        seq=[['Up', ex.up||2, 0,1, 'var(--green)', 900, 'up']];
+        if(ex.hold>0) seq.push(['Hold', ex.hold, 1,1, 'var(--amber)', 520, 'down']);
+        seq.push(['Down', ex.down||2, 1,0, 'var(--blue)', 620, 'up']);
+      }
+      let i=0;
+      (function next(){
+        if(stopped) return;
+        if(i>=seq.length){ beep(660,0.09);
+          if(rep<target && ex.repRest){ runCountdown(ex.repRest,'var(--blue)','Rest', doRep); }
+          else doRep();
+          return;
+        }
+        const p=seq[i++]; runPhase(p[1],p[2],p[3],p[4],p[0],p[5],p[6], next);
+      })();
+    }
+    doRep();
+  }
+  nextBlock();
 }
 
 /* ===== done / ready ===== */
