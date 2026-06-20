@@ -330,9 +330,15 @@ const ringEl=()=>document.getElementById('ring');
 function initRing(){ const r=ringEl(); r.style.strokeDasharray=CIRC; r.style.strokeDashoffset=CIRC; }
 function setRing(frac,color){ const r=ringEl(); r.style.stroke=color; r.style.strokeDashoffset=CIRC*(1-Math.max(0,Math.min(1,frac))); }
 
+/* ===== keep screen awake (Wake Lock API; no-op where unsupported) ===== */
+let wakeLock=null, wantWake=false;
+async function requestWake(){ wantWake=true; try{ if('wakeLock' in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{ wakeLock=null; }); } }catch(e){} }
+async function releaseWake(){ wantWake=false; try{ if(wakeLock){ const w=wakeLock; wakeLock=null; await w.release(); } }catch(e){} }
+document.addEventListener('visibilitychange', ()=>{ if(wantWake && document.visibilityState==='visible') requestWake(); });
+
 /* ===== engine ===== */
 let rafId=null, paused=false, stopped=true;
-function stopEngine(){ stopped=true; paused=false; if(rafId){cancelAnimationFrame(rafId); rafId=null;} try{if('speechSynthesis' in window) speechSynthesis.cancel();}catch(e){} const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pause'; }
+function stopEngine(){ stopped=true; paused=false; if(rafId){cancelAnimationFrame(rafId); rafId=null;} releaseWake(); try{if('speechSynthesis' in window) speechSynthesis.cancel();}catch(e){} const pb=document.getElementById('pauseBtn'); if(pb) pb.textContent='Pause'; }
 function togglePause(){ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'Resume':'Pause'; }
 function stopStage(){ routineActive=null; stopEngine(); show('home'); }
 
@@ -373,7 +379,7 @@ function setTally(t){ document.getElementById('tally').textContent=t||''; }
 
 /* ===== play one exercise, call onDone() when complete ===== */
 function playExercise(ex, onDone, setsOverride){
-  show('stage'); stopped=false; paused=false; initRing();
+  show('stage'); stopped=false; paused=false; requestWake(); initRing();
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo(ex.name, ex.dose); setTally('');
   document.getElementById('howtoLink').href=ytURL(ex);
@@ -588,7 +594,7 @@ function finishRoutine(which){
 const cfg={work:10,rest:10,rounds:8};
 function step(k,d){ cfg[k]=Math.max(k==='rounds'?1:5, cfg[k]+d); document.getElementById(k+'Val').textContent=cfg[k]; }
 function startInterval(){
-  initAudio(); show('stage'); stopped=false; paused=false; initRing();
+  initAudio(); show('stage'); stopped=false; paused=false; requestWake(); initRing();
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo('Interval timer', cfg.work+'s on · '+cfg.rest+'s off');
   let round=0;
