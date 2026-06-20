@@ -312,13 +312,13 @@ function makeItem(ex, opts){
 /* ===== audio ===== */
 let actx=null;
 function initAudio(){ try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){} }
-function beep(freq,dur,vol){ if(!actx) return; try{ const o=actx.createOscillator(),g=actx.createGain(); o.type='sine'; o.frequency.value=freq; o.connect(g); g.connect(actx.destination); const t=actx.currentTime; g.gain.setValueAtTime(vol||0.18,t); o.start(t); g.gain.exponentialRampToValueAtTime(0.0001,t+(dur||0.08)); o.stop(t+(dur||0.08)+0.02);}catch(e){} }
+function beep(){ /* beeps removed — voice cues do everything; iOS muted them via the silent switch anyway */ }
 
 /* ===== voice cues (Web Speech) ===== */
 let voiceOn = (localStorage.getItem('jackie_voice')||'on')!=='off';
 function speak(t){ if(!voiceOn||!t) return; try{ if(!('speechSynthesis' in window)) return; const u=new SpeechSynthesisUtterance(String(t).replace(/\s*—\s*/g,' ')); u.rate=1.05; u.pitch=1; u.volume=1; speechSynthesis.speak(u);}catch(e){} }
 function primeVoice(){ try{ if('speechSynthesis' in window){ speechSynthesis.getVoices(); const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u);} }catch(e){} }
-function updateVoiceBtn(){ const b=document.getElementById('voiceToggle'); if(b) b.textContent = voiceOn?'🔊 Voice cues: On':'🔇 Voice cues: Off (beeps only)'; }
+function updateVoiceBtn(){ const b=document.getElementById('voiceToggle'); if(b) b.textContent = voiceOn?'🔊 Voice cues: On':'🔇 Voice cues: Off (silent)'; }
 function toggleVoice(){ voiceOn=!voiceOn; try{localStorage.setItem('jackie_voice', voiceOn?'on':'off');}catch(e){} updateVoiceBtn(); if(voiceOn){ primeVoice(); speak('Voice on'); } else { try{speechSynthesis.cancel();}catch(e){} } }
 
 /* ===== nav ===== */
@@ -330,10 +330,34 @@ const ringEl=()=>document.getElementById('ring');
 function initRing(){ const r=ringEl(); r.style.strokeDasharray=CIRC; r.style.strokeDashoffset=CIRC; }
 function setRing(frac,color){ const r=ringEl(); r.style.stroke=color; r.style.strokeDashoffset=CIRC*(1-Math.max(0,Math.min(1,frac))); }
 
-/* ===== keep screen awake (Wake Lock API; no-op where unsupported) ===== */
-let wakeLock=null, wantWake=false;
-async function requestWake(){ wantWake=true; try{ if('wakeLock' in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{ wakeLock=null; }); } }catch(e){} }
-async function releaseWake(){ wantWake=false; try{ if(wakeLock){ const w=wakeLock; wakeLock=null; await w.release(); } }catch(e){} }
+/* ===== keep screen awake ===== */
+/* Two layers: (1) Wake Lock API where supported; (2) a tiny hidden looping muted
+   video — the reliable iOS fallback, since Safari's Wake Lock is flaky, esp. from
+   the Home Screen. The video element is created once and played on a user gesture. */
+let wakeLock=null, wantWake=false, wakeVid=null;
+const WAKE_MP4="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMWbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAkB0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAEAAAABAAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAG4bWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAQABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABY21pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAASNzdGJsAAAAv3N0c2QAAAAAAAAAAQAAAK9hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAEAAQABIAAAASAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGP//AAAANWF2Y0MBZAAK/+EAGGdkAAqs2UQmwEQAAAMABAAAAwAIPEiWWAEABmjr48siwP34+AAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAWuAAAFrgAAAAYc3R0cwAAAAAAAAABAAAAAQAAQAAAAAAcc3RzYwAAAAAAAAABAAAAAQAAAAEAAAABAAAAFHN0c3oAAAAAAAAC1wAAAAEAAAAUc3RjbwAAAAAAAAABAAADRgAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNTguNzYuMTAwAAAACGZyZWUAAALfbWRhdAAAAq0GBf//qdxF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjMgcjMwNjAgNWRiNmFhNiAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjEgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDM6MHgxMTMgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEgOHg4ZGN0PTEgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz0yIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0yIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAImWIhAAV//73ye/Apuvb3rW/k89I+HvGUA+sGavr20h/+zE=";
+const WAKE_WEBM="data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIMEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEiTbuMU6uEHFO7a1OsggH27AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNTguNzYuMTAwV0GNTGF2ZjU4Ljc2LjEwMESJiECPQAAAAAAAFlSua8WuAQAAAAAAADzXgQFzxYiEZAFeoJbaI5yBACK1nIN1bmSGhVZfVlA4g4EBI+ODhDuaygDgAQAAAAAAAAmwgUC6gUCagQISVMNnQJpzcwEAAAAAAAAnY8CAZ8gBAAAAAAAAGkWjh0VOQ09ERVJEh41MYXZmNTguNzYuMTAwc3MBAAAAAAAAX2PAi2PFiIRkAV6gltojZ8gBAAAAAAAAIkWjh0VOQ09ERVJEh5VMYXZjNTguMTM0LjEwMCBsaWJ2cHhnyKJFo4hEVVJBVElPTkSHlDAwOjAwOjAxLjAwMDAwMDAwMAAAH0O2da/ngQCjqoEAAIDwAgCdASpAAEAAAEcIhYWImYSIAoIABnA8QmAKsiD3MAD+/4+8ABxTu2uRu4+zgQC3iveBAfGCAcLwgQM=";
+function ensureWakeVid(){
+  if(wakeVid) return wakeVid;
+  const v=document.createElement('video');
+  v.muted=true; v.loop=true; v.playsInline=true; v.defaultMuted=true;
+  v.setAttribute('muted',''); v.setAttribute('playsinline',''); v.setAttribute('loop','');
+  v.style.cssText='position:fixed; right:0; bottom:0; width:2px; height:2px; opacity:0.01; pointer-events:none; z-index:-1;';
+  const s1=document.createElement('source'); s1.src=WAKE_MP4; s1.type='video/mp4';
+  const s2=document.createElement('source'); s2.src=WAKE_WEBM; s2.type='video/webm';
+  v.appendChild(s1); v.appendChild(s2);
+  document.body.appendChild(v); wakeVid=v; return v;
+}
+async function requestWake(){
+  wantWake=true;
+  try{ const v=ensureWakeVid(); const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+  try{ if('wakeLock' in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', ()=>{ wakeLock=null; }); } }catch(e){}
+}
+async function releaseWake(){
+  wantWake=false;
+  try{ if(wakeVid) wakeVid.pause(); }catch(e){}
+  try{ if(wakeLock){ const w=wakeLock; wakeLock=null; await w.release(); } }catch(e){}
+}
 document.addEventListener('visibilitychange', ()=>{ if(wantWake && document.visibilityState==='visible') requestWake(); });
 
 /* ===== engine ===== */
@@ -358,9 +382,9 @@ function runPhase(durSec, fromFrac, toFrac, color, label, beepFreq, numMode, onD
   }
   rafId=requestAnimationFrame(frame);
 }
-function runCountdown(durSec, color, label, onDone){
+function runCountdown(durSec, color, label, onDone, voice){
   let elapsed=0, last=performance.now(), lastSec=-1;
-  document.getElementById('phaseLabel').textContent=label; speak(label);
+  document.getElementById('phaseLabel').textContent=label; speak(voice!==undefined?voice:label);
   function frame(now){
     if(stopped) return;
     if(!paused) elapsed += now-last;
@@ -383,7 +407,7 @@ function playExercise(ex, onDone, setsOverride){
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo(ex.name, ex.dose); setTally('');
   document.getElementById('howtoLink').href=ytURL(ex);
-  function finishAll(){ beep(880,0.12); setTimeout(()=>beep(1175,0.16),120); speak('Done'); onDone(); }
+  function finishAll(){ beep(880,0.12); setTimeout(()=>beep(1175,0.16),120); onDone(); speak('End of exercise'); }
 
   if(ex.type==='hold'){
     const sides = ex.eachSide ? ['Left','Right'] : [null];
@@ -414,9 +438,9 @@ function playExercise(ex, onDone, setsOverride){
     setsArr.forEach((target,si2)=>{ blocks.push({side:null,target,setNo:si2+1}); });
   }
   function restBetween(prev,next){
-    if(ex.eachSide && ex.altSides) return {sec:ex.rest||12, color:'var(--blue)', label:'Rest — switch sides'};
-    if(ex.eachSide && prev.side!==next.side) return {sec:4, color:'var(--blue)', label:'Switch sides'};
-    return {sec:ex.rest||20, color:'var(--blue)', label:'Rest — next set'};
+    if(ex.eachSide && ex.altSides) return {sec:ex.rest||12, color:'var(--blue)', label:'Rest — switch sides', voice:'End of set. Switch sides.'};
+    if(ex.eachSide && prev.side!==next.side) return {sec:4, color:'var(--blue)', label:'Switch sides', voice:'Switch sides.'};
+    return {sec:ex.rest||20, color:'var(--blue)', label:'Rest — next set', voice:'End of set.'};
   }
   let bi=0;
   function nextBlock(){
@@ -428,7 +452,7 @@ function playExercise(ex, onDone, setsOverride){
     function doRep(){
       if(stopped) return;
       if(rep>=target){
-        if(bi<blocks.length){ const r=restBetween(blk,blocks[bi]); runCountdown(r.sec, r.color, r.label, nextBlock); }
+        if(bi<blocks.length){ const r=restBetween(blk,blocks[bi]); runCountdown(r.sec, r.color, r.label, nextBlock, r.voice); }
         else finishAll();
         return;
       }
@@ -598,7 +622,7 @@ function startInterval(){
   document.getElementById('pauseBtn').textContent='Pause';
   setStageInfo('Interval timer', cfg.work+'s on · '+cfg.rest+'s off');
   let round=0;
-  function done(){ showDone('✓ Done', cfg.rounds+' rounds complete', [{label:'Again',onclick:startInterval,primary:true},{label:'Home',onclick:()=>show('home')}]); }
+  function done(){ showDone('✓ Done', cfg.rounds+' rounds complete', [{label:'Again',onclick:startInterval,primary:true},{label:'Home',onclick:()=>show('home')}]); speak('Workout complete'); }
   function work(){
     if(stopped) return;
     round++; if(round>cfg.rounds){ done(); return; }
@@ -613,7 +637,8 @@ function startInterval(){
 
 /* ===== init ===== */
 buildList(); initRing(); refreshStreak(); updateVoiceBtn();
-document.body.addEventListener('click', ()=>{ initAudio(); primeVoice(); }, {once:true});
+function primeWake(){ try{ const v=ensureWakeVid(); const p=v.play(); if(p&&p.then){ p.then(()=>{ if(!wantWake) v.pause(); }).catch(()=>{}); } }catch(e){} }
+document.body.addEventListener('click', ()=>{ initAudio(); primeVoice(); primeWake(); }, {once:true});
 </script>
 </body>
 </html>
