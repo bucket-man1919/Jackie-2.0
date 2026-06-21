@@ -113,7 +113,8 @@
     <button class="btn" onclick="show('resources')">📺 Resources
       <span class="sub">Longer follow-along videos &amp; guides</span></button>
     <button class="btn" id="voiceToggle" onclick="toggleVoice()" style="background:none;border:1px dashed var(--line);color:var(--muted);text-align:center">🔊 Voice cues: On</button>
-    <footer>Not medical advice. Stop if anything hurts.</footer>
+    <footer>Not medical advice. Stop if anything hurts.<br><span id="verLine"></span></footer>
+    <!--APPVER:1-->
   </section>
 
   <!-- TODAY -->
@@ -636,7 +637,28 @@ function startInterval(){
 }
 
 /* ===== init ===== */
-buildList(); initRing(); refreshStreak(); updateVoiceBtn();
+/* ===== version stamp + update check ===== */
+const APP_VERSION=1, APP_DATE='Jun 20, 2026';
+function renderVer(latest){
+  const el=document.getElementById('verLine'); if(!el) return;
+  if(latest && latest>APP_VERSION){
+    el.innerHTML='v'+APP_VERSION+' · '+APP_DATE+' &nbsp;·&nbsp; <b style="color:var(--amber)">🔄 v'+latest+' available — delete &amp; re-add the app to update</b>';
+  } else {
+    el.textContent='v'+APP_VERSION+' · '+APP_DATE;
+  }
+}
+function checkUpdate(){
+  renderVer();
+  try{
+    const url=location.href.split('?')[0].split('#')[0]+'?cb='+Date.now();
+    fetch(url,{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{
+      const m=t.match(/APPVER:(\d+)/);
+      if(m) renderVer(parseInt(m[1],10));
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+buildList(); initRing(); refreshStreak(); updateVoiceBtn(); checkUpdate();
 function primeWake(){ try{ const v=ensureWakeVid(); const p=v.play(); if(p&&p.then){ p.then(()=>{ if(!wantWake) v.pause(); }).catch(()=>{}); } }catch(e){} }
 document.body.addEventListener('click', ()=>{ initAudio(); primeVoice(); primeWake(); }, {once:true});
 </script>
