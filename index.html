@@ -56,6 +56,11 @@
   .itxt{flex:1;}
   .howto{color:var(--blue); font-size:12.5px; text-decoration:none; margin-top:7px;}
   .nm{font-size:15px; font-weight:600;}
+  .tag{display:inline-block; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:6px; margin-left:7px; vertical-align:middle; background:var(--card2); color:var(--blue); border:1px solid var(--line);}
+  .filterrow{display:flex; gap:7px; overflow-x:auto; padding:2px 2px 8px; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .filterrow::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto; font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:999px; background:var(--card); color:var(--muted); border:1px solid var(--line); white-space:nowrap;}
+  .chip.active{background:var(--blue); color:#06121f; border-color:var(--blue);}
   .ds{font-size:11.5px; color:var(--muted); margin-top:1px;}
   .go{font-size:11px; color:var(--blue); white-space:nowrap;}
   .startrow{margin:8px 0 2px;}
@@ -114,7 +119,7 @@
       <span class="sub">Longer follow-along videos &amp; guides</span></button>
     <button class="btn" id="voiceToggle" onclick="toggleVoice()" style="background:none;border:1px dashed var(--line);color:var(--muted);text-align:center">🔊 Voice cues: On</button>
     <footer>Not medical advice. Stop if anything hurts.<br><span id="verLine"></span></footer>
-    <!--APPVER:1-->
+    <!--APPVER:2-->
   </section>
 
   <!-- TODAY -->
@@ -127,6 +132,9 @@
     <div class="secthead">🛠️ Midday &mdash; shoulder base (optional, bonus)</div>
     <div id="middayList"></div>
     <button class="btn primary startrow" onclick="startRoutine('midday')">▶︎ Start midday routine</button>
+    <div class="secthead">🦵 Evening &mdash; APT warm-up (before the Big 3)</div>
+    <div id="eveprepList"></div>
+    <button class="btn primary startrow" onclick="startRoutine('eveprep')">▶︎ Start warm-up</button>
     <div class="secthead">🌙 Evening &mdash; the Big 3 (keystone)</div>
     <div id="eveningList"></div>
     <button class="btn primary startrow" onclick="chooseLength({routine:true})">▶︎ Start evening routine</button>
@@ -205,6 +213,8 @@
   <!-- LIST -->
   <section id="list" class="screen">
     <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="secthead">Pick a snack — filter by focus</div>
+    <div class="filterrow" id="listFilter"></div>
     <div id="listItems"></div>
     <div style="height:14px"></div>
   </section>
@@ -257,40 +267,46 @@
    type 'reps': {reps, up, hold, down} seconds/phase ; eachSide optional
    type 'hold': {seconds} ; eachSide optional */
 const EX = {
-  catcow:    {name:"Cat–Cow", dose:"8 slow reps · move the whole spine", pos:"floor", type:"reps", reps:8, up:3, hold:0, down:3, snack:true},
-  hipflexor: {name:"Kneeling Hip-Flexor Stretch", dose:"30s each side · glute on, ribs down", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true},
-  glutebridge:{name:"Glute Bridge", dose:"12 reps · 2s up, 2s squeeze, 2s down", pos:"floor", type:"reps", reps:12, up:2, hold:2, down:2, snack:true},
-  clamshell: {name:"Clamshell", dose:"12 reps each side · slow, hips still", pos:"floor", type:"reps", reps:12, up:2, hold:1, down:2, eachSide:true, snack:true},
-  deadbug:   {name:"Dead Bug", dose:"8 reps · low back stays down", pos:"floor", type:"reps", reps:8, up:2, hold:0, down:2, snack:true},
-  birddog:   {name:"Bird Dog (McGill)", dose:"6 → 4 → 2 · alternate opposite arm/leg each rep · 10s holds, rest between reps", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, repRest:4, rest:25, snack:false},
-  curlup:    {name:"Curl-Up (McGill)", dose:"6 → 4 → 2 · 10s holds · relax all the way down between reps · switch knee each set", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, repRest:4, rest:25, snack:false},
-  sideplank: {name:"Side Plank (McGill)", dose:"6 → 4 → 2 · alternate sides each set · 10s holds, “squat hips up”, come down between reps", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, eachSide:true, altSides:true, repRest:3, rest:12, snack:false},
-  figure4:   {name:"Supine figure-4 stretch", dose:"30s each side · SI-friendly", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true},
-  squat:     {name:"Bodyweight Squat", dose:"10 reps · 2s down, pause, 2s up", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:2, descend:true, snack:true},
-  calfraise: {name:"Standing Calf Raise", dose:"15 reps · 1s up, 1s squeeze, 2s down", pos:"standing", type:"reps", reps:15, up:1, hold:1, down:2, snack:true},
-  hiphinge:  {name:"Hip Hinge", dose:"8 reps · butt back, flat back", pos:"standing", type:"reps", reps:8, up:2, hold:0, down:2, snack:true},
-  balance:   {name:"Single-Leg Balance", dose:"30s each side · soft knee", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true},
-  wallsit:   {name:"Wall Sit", dose:"30s hold · thighs toward parallel", pos:"standing", type:"hold", seconds:30, snack:true},
-  standham:  {name:"Standing Hamstring Stretch", dose:"30s each side · hinge, flat back", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true},
-  quadstr:   {name:"Standing Quad Stretch", dose:"30s each side · knees together", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true},
-  calfstr:   {name:"Calf Stretch on Wall", dose:"30s each side · heel down", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true},
-  anklewall: {name:"Ankle Rock (Knee-to-Wall)", dose:"10 reps each side · heel down", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:1, eachSide:true, snack:true},
-  glutesqz:  {name:"Standing Glute Squeeze", dose:"10 reps · 3s hard squeeze", pos:"standing", type:"reps", reps:10, up:1, hold:3, down:1, snack:true},
-  seatfig4:  {name:"Seated Figure-4 Stretch", dose:"30s each side · ankle on knee, lean", pos:"sitting", type:"hold", seconds:30, eachSide:true, snack:true},
-  seatham:   {name:"Seated Hamstring Stretch", dose:"30s each side · extend leg, reach", pos:"sitting", type:"hold", seconds:30, eachSide:true, snack:true},
-  seattwist: {name:"Seated Thoracic Rotation", dose:"6 reps each side · open the chest", pos:"sitting", type:"reps", reps:6, up:1, hold:2, down:1, eachSide:true, snack:true},
-  neckstr:   {name:"Neck Side Stretch", dose:"30s each side · ear to shoulder", pos:"sitting", type:"hold", seconds:30, eachSide:true, snack:true},
-  seatglute: {name:"Seated Glute Squeeze", dose:"10 reps · 3s squeeze, sit tall", pos:"sitting", type:"reps", reps:10, up:1, hold:3, down:1, snack:true},
-  ankcircle: {name:"Ankle Circles", dose:"20s each side · slow, full circles", pos:"sitting", type:"hold", seconds:20, eachSide:true, snack:true},
-  tspine:    {name:"T-Spine Rotation (Quadruped)", dose:"6 each side · reach one hand under, rotate, brief hold — mid-back mobility (foundation first)", pos:"floor", type:"reps", reps:6, up:2, hold:2, down:1, eachSide:true, snack:false},
-  bandedw:   {name:"Banded W", dose:"15 reps · elbows tucked at ribs, rotate hands out against the band, 1–2s hold — cuff + lower trap", pos:"standing", type:"reps", reps:15, up:1, hold:2, down:1, snack:false},
-  erpress:   {name:"External Rotation Press", dose:"8 reps · band: row → rotate out → press overhead, pause each — overhead-position stability", pos:"standing", type:"reps", reps:8, up:2, hold:3, down:2, snack:false},
-  scappush:  {name:"Scap Push-Ups", dose:"10 reps · arms straight, push the floor away then let the blades come together — serratus (incline if needed)", pos:"floor", type:"reps", reps:10, up:2, hold:1, down:2, snack:false},
-  inclineplank:{name:"Incline Plank Hold", dose:"hands elevated, clean hold ~20s — repeat for 2–3 sets, stop before the shake", pos:"floor", type:"hold", seconds:20, snack:false}
+  catcow:    {name:"Cat–Cow", dose:"8 slow reps · move the whole spine", pos:"floor", type:"reps", reps:8, up:3, hold:0, down:3, snack:true, tag:"Mobility"},
+  hipflexor: {name:"Kneeling Hip-Flexor Stretch", dose:"30s each side · glute on, ribs down", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true, tag:"APT"},
+  glutebridge:{name:"Glute Bridge", dose:"12 reps · 2s up, 2s squeeze, 2s down", pos:"floor", type:"reps", reps:12, up:2, hold:2, down:2, snack:true, tag:"Glute"},
+  clamshell: {name:"Clamshell", dose:"12 reps each side · slow, hips still", pos:"floor", type:"reps", reps:12, up:2, hold:1, down:2, eachSide:true, snack:true, tag:"Glute"},
+  deadbug:   {name:"Dead Bug", dose:"8 reps · low back stays down", pos:"floor", type:"reps", reps:8, up:2, hold:0, down:2, snack:true, tag:"Core"},
+  pelvictilt:{name:"Supine Pelvic Tilt", dose:"10 reps · gently flatten the low back into the floor, 2s hold — learn neutral", pos:"floor", type:"reps", reps:10, up:2, hold:2, down:2, snack:true, tag:"APT"},
+  activehipflexor:{name:"Active Half-Kneeling Hip-Flexor Stretch", dose:"60s each side · tuck the tailbone + squeeze that glute FIRST, then shift forward — stretches the hip flexor, not the low back", pos:"floor", type:"hold", seconds:60, eachSide:true, snack:true, tag:"APT"},
+  slbridge:  {name:"Single-Leg Glute Bridge", dose:"8 reps each side · hips level, 2s squeeze", pos:"floor", type:"reps", reps:8, up:2, hold:2, down:2, eachSide:true, snack:true, tag:"Glute"},
+  birddog:   {name:"Bird Dog (McGill)", dose:"6 → 4 → 2 · alternate opposite arm/leg each rep · 10s holds, rest between reps", pos:"floor", type:"reps", sets:[6,4,2], up:2, hold:10, down:1, repRest:4, rest:25, snack:false, tag:"Core"},
+  curlup:    {name:"Curl-Up (McGill)", dose:"6 → 4 → 2 · 10s holds · relax all the way down between reps · switch knee each set", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, repRest:4, rest:25, snack:false, tag:"Core"},
+  sideplank: {name:"Side Plank (McGill)", dose:"6 → 4 → 2 · alternate sides each set · 10s holds, “squat hips up”, come down between reps", pos:"floor", type:"reps", sets:[6,4,2], up:1, hold:10, down:1, eachSide:true, altSides:true, repRest:3, rest:12, snack:false, tag:"Core"},
+  figure4:   {name:"Supine figure-4 stretch", dose:"30s each side · SI-friendly", pos:"floor", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Hip"},
+  squat:     {name:"Bodyweight Squat", dose:"10 reps · 2s down, pause, 2s up", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:2, descend:true, snack:true, tag:"Legs"},
+  calfraise: {name:"Standing Calf Raise", dose:"15 reps · 1s up, 1s squeeze, 2s down", pos:"standing", type:"reps", reps:15, up:1, hold:1, down:2, snack:true, tag:"Calf"},
+  hiphinge:  {name:"Hip Hinge", dose:"8 reps · butt back, flat back", pos:"standing", type:"reps", reps:8, up:2, hold:0, down:2, snack:true, tag:"Hinge"},
+  balance:   {name:"Single-Leg Balance", dose:"30s each side · soft knee", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Balance"},
+  wallsit:   {name:"Wall Sit", dose:"30s hold · thighs toward parallel", pos:"standing", type:"hold", seconds:30, snack:true, tag:"Legs"},
+  standham:  {name:"Standing Hamstring Stretch", dose:"30s each side · hinge, flat back", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Hamstring"},
+  quadstr:   {name:"Standing Quad Stretch", dose:"30s each side · knees together", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Quad"},
+  calfstr:   {name:"Calf Stretch on Wall", dose:"30s each side · heel down", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Calf"},
+  anklewall: {name:"Ankle Rock (Knee-to-Wall)", dose:"10 reps each side · heel down", pos:"standing", type:"reps", reps:10, up:2, hold:1, down:1, eachSide:true, snack:true, tag:"Dorsiflexion"},
+  glutesqz:  {name:"Standing Glute Squeeze", dose:"10 reps · 3s hard squeeze — tucks the pelvis, fights the arch", pos:"standing", type:"reps", reps:10, up:1, hold:3, down:1, snack:true, tag:"APT"},
+  standtilt: {name:"Standing Pelvic Tilt (Wall)", dose:"10 reps · back to a wall, gently flatten the low back toward it — neutral while standing", pos:"standing", type:"reps", reps:10, up:2, hold:2, down:2, snack:true, tag:"APT"},
+  footprop:  {name:"Foot-Prop Reset", dose:"30s each foot · prop a foot up in front, let the low back soften — your standing relief", pos:"standing", type:"hold", seconds:30, eachSide:true, snack:true, tag:"APT"},
+  seatfig4:  {name:"Seated Figure-4 Stretch", dose:"30s each side · ankle on knee, lean", pos:"sitting", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Hip"},
+  seatham:   {name:"Seated Hamstring Stretch", dose:"30s each side · extend leg, reach", pos:"sitting", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Hamstring"},
+  seattwist: {name:"Seated Thoracic Rotation", dose:"6 reps each side · open the chest", pos:"sitting", type:"reps", reps:6, up:1, hold:2, down:1, eachSide:true, snack:true, tag:"T-Spine"},
+  neckstr:   {name:"Neck Side Stretch", dose:"30s each side · ear to shoulder", pos:"sitting", type:"hold", seconds:30, eachSide:true, snack:true, tag:"Neck"},
+  seatglute: {name:"Seated Glute Squeeze", dose:"10 reps · 3s squeeze, sit tall", pos:"sitting", type:"reps", reps:10, up:1, hold:3, down:1, snack:true, tag:"Glute"},
+  ankcircle: {name:"Ankle Circles", dose:"20s each side · slow, full circles", pos:"sitting", type:"hold", seconds:20, eachSide:true, snack:true, tag:"Ankle"},
+  tspine:    {name:"T-Spine Rotation (Quadruped)", dose:"6 each side · reach one hand under, rotate, brief hold — mid-back mobility (foundation first)", pos:"floor", type:"reps", reps:6, up:2, hold:2, down:1, eachSide:true, snack:false, tag:"T-Spine"},
+  bandedw:   {name:"Banded W", dose:"15 reps · elbows tucked at ribs, rotate hands out against the band, 1–2s hold — cuff + lower trap", pos:"standing", type:"reps", reps:15, up:1, hold:2, down:1, snack:false, tag:"Shoulder"},
+  erpress:   {name:"External Rotation Press", dose:"8 reps · band: row → rotate out → press overhead, pause each — overhead-position stability", pos:"standing", type:"reps", reps:8, up:2, hold:3, down:2, snack:false, tag:"Shoulder"},
+  scappush:  {name:"Scap Push-Ups", dose:"10 reps · arms straight, push the floor away then let the blades come together — serratus (incline if needed)", pos:"floor", type:"reps", reps:10, up:2, hold:1, down:2, snack:false, tag:"Shoulder"},
+  inclineplank:{name:"Incline Plank Hold", dose:"hands elevated, clean hold ~20s — repeat for 2–3 sets, stop before the shake", pos:"floor", type:"hold", seconds:20, snack:false, tag:"Shoulder"}
 };
 const ROUTINES = {
   morning: ["catcow","hipflexor","glutebridge","clamshell","deadbug"],
   midday: ["tspine","bandedw","erpress","scappush","inclineplank"],
+  eveprep: ["pelvictilt","activehipflexor"],
   evening: ["curlup","sideplank","birddog"]
 };
 function ytURL(ex){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(ex.name.replace(/\(.*?\)/g,'').trim()+' exercise how to'); }
@@ -303,7 +319,8 @@ function makeItem(ex, opts){
     row.appendChild(chk);
   }
   const main=document.createElement('button'); main.className='itemmain';
-  main.innerHTML=((opts.showChk&&!opts.onToggle)?'<span class="chk">'+(opts.done?'✓':'')+'</span>':'')+'<span class="itxt"><span class="nm">'+ex.name+'</span><span class="ds">'+ex.dose+'</span></span>';
+  const tagHtml=(opts.showTag&&ex.tag)?'<span class="tag">'+ex.tag+'</span>':'';
+  main.innerHTML=((opts.showChk&&!opts.onToggle)?'<span class="chk">'+(opts.done?'✓':'')+'</span>':'')+'<span class="itxt"><span class="nm">'+ex.name+tagHtml+'</span><span class="ds">'+ex.dose+'</span></span>';
   main.onclick=opts.onPlay;
   const watch=document.createElement('a'); watch.className='watch'; watch.href=ytURL(ex); watch.target='_blank'; watch.rel='noopener'; watch.textContent='▶'; watch.title='Watch how-to';
   row.appendChild(main); row.appendChild(watch);
@@ -524,15 +541,29 @@ function listDone(ex){
     {label:'Home', onclick:()=>show('home')}
   ]);
 }
+let listTag='all';
+function snackTags(){ const t=[]; Object.keys(EX).forEach(k=>{ if(EX[k].snack && EX[k].tag && !t.includes(EX[k].tag)) t.push(EX[k].tag); }); return t; }
+function buildFilter(){
+  const f=document.getElementById('listFilter'); if(!f) return; f.innerHTML='';
+  ['all'].concat(snackTags()).forEach(tg=>{
+    const b=document.createElement('button'); b.className='chip'+(listTag===tg?' active':'');
+    b.textContent = tg==='all'?'All':tg;
+    b.onclick=()=>{ listTag=tg; buildFilter(); buildList(); };
+    f.appendChild(b);
+  });
+}
 function buildList(){
   const c=document.getElementById('listItems'); c.innerHTML='';
   [['standing','Standing'],['sitting','Sitting'],['floor','On the floor']].forEach(([group,label])=>{
+    const items=Object.keys(EX).filter(k=>EX[k].pos===group && EX[k].snack && (listTag==='all'||EX[k].tag===listTag));
+    if(!items.length) return;
     const h=document.createElement('div'); h.className='secthead'; h.textContent=label; c.appendChild(h);
-    Object.keys(EX).filter(k=>EX[k].pos===group && EX[k].snack).forEach(k=>{
+    items.forEach(k=>{
       const ex=EX[k];
-      c.appendChild(makeItem(ex, {showChk:false, done:false, onPlay:()=> playExercise(ex, ()=>listDone(ex))}));
+      c.appendChild(makeItem(ex, {showChk:false, showTag:true, done:false, onPlay:()=> playExercise(ex, ()=>listDone(ex))}));
     });
   });
+  if(!c.children.length){ const e=document.createElement('div'); e.className='hint'; e.textContent='No snacks under that filter.'; c.appendChild(e); }
 }
 
 /* ===== tracking / streak ===== */
@@ -555,7 +586,7 @@ function refreshStreak(){
   ['streakNum','streakNum2'].forEach(id=>{const e=document.getElementById(id); if(e)e.textContent=s;});
 }
 function renderToday(){
-  ['morning','midday','evening'].forEach(which=>{
+  ['morning','midday','eveprep','evening'].forEach(which=>{
     const c=document.getElementById(which+'List'); c.innerHTML='';
     ROUTINES[which].forEach(id=>{
       const ex=EX[id]; const done=isDone(which,id);
@@ -607,8 +638,8 @@ function finishRoutine(which){
   routineActive=null;
   if(which==='evening') refreshStreak();
   const s=computeStreak();
-  const titles={morning:'☀️ Morning', midday:'🛠️ Midday', evening:'🌙 Evening'};
-  const subs={morning:'Morning mobility done. Nice.', midday:'Shoulder base done — bonus banked.', evening:'Big 3 done. 🔥 '+s+'-day streak.'};
+  const titles={morning:'☀️ Morning', midday:'🛠️ Midday', eveprep:'🦵 APT warm-up', evening:'🌙 Evening'};
+  const subs={morning:'Morning mobility done. Nice.', midday:'Shoulder base done — bonus banked.', eveprep:'APT warm-up done — now go into the Big 3.', evening:'Big 3 done. 🔥 '+s+'-day streak.'};
   showDone((titles[which]||'Routine')+' complete!', subs[which]||'', [
     {label:'Back to Today', onclick:()=>{ renderToday(); show('today'); }, primary:true},
     {label:'Home', onclick:()=>show('home')}
@@ -638,7 +669,7 @@ function startInterval(){
 
 /* ===== init ===== */
 /* ===== version stamp + update check ===== */
-const APP_VERSION=1, APP_DATE='Jun 20, 2026';
+const APP_VERSION=2, APP_DATE='Jun 26, 2026';
 function renderVer(latest){
   const el=document.getElementById('verLine'); if(!el) return;
   if(latest && latest>APP_VERSION){
@@ -658,7 +689,7 @@ function checkUpdate(){
   }catch(e){}
 }
 
-buildList(); initRing(); refreshStreak(); updateVoiceBtn(); checkUpdate();
+buildFilter(); buildList(); initRing(); refreshStreak(); updateVoiceBtn(); checkUpdate();
 function primeWake(){ try{ const v=ensureWakeVid(); const p=v.play(); if(p&&p.then){ p.then(()=>{ if(!wantWake) v.pause(); }).catch(()=>{}); } }catch(e){} }
 document.body.addEventListener('click', ()=>{ initAudio(); primeVoice(); primeWake(); }, {once:true});
 </script>
